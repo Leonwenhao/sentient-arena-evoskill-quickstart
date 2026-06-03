@@ -13,12 +13,8 @@ cd "$(dirname "$0")/../evoskill-project"
 
 CONFIG="${1:-.evoskill/config.toml}"
 
-# --- API key check (default config needs OpenRouter) ---
-if [[ "$CONFIG" == *"advanced"* ]]; then
-  [ -n "${ANTHROPIC_API_KEY:-}" ] || { echo "Advanced config needs ANTHROPIC_API_KEY. export it first."; exit 1; }
-else
-  [ -n "${OPENROUTER_API_KEY:-}" ] || { echo "Set OPENROUTER_API_KEY first (see ./scripts/setup.sh)."; exit 1; }
-fi
+# --- API key check (all configs route through OpenRouter) ---
+[ -n "${OPENROUTER_API_KEY:-}" ] || { echo "Set OPENROUTER_API_KEY first (see ./scripts/setup.sh)."; exit 1; }
 command -v evoskill &>/dev/null || { echo "evoskill not found — run ./scripts/setup.sh first."; exit 1; }
 
 # --- isolated git repo so EvoSkill's program/* branches stay out of the outer repo ---

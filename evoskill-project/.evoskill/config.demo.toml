@@ -1,0 +1,39 @@
+# EvoSkill config — DEMO / filming (tuned to show a visible accuracy climb).
+#
+#   ./scripts/improve.sh .evoskill/config.demo.toml
+#
+# vs the default config.toml, this widens the validation split and runs more
+# iterations so the "accuracy goes up" moment reads clearly on camera. It uses
+# the Arena's MiniMax M2.7 (authentic + cheap). For an even MORE reliable climb,
+# swap the model line below to a strong proposer — EvoSkill's cross-model
+# transfer carries the gain back to M2.7 at eval:
+#
+#     model = "openrouter/anthropic/claude-sonnet-4.6"
+#
+# (still one OpenRouter key; pricier per run, but proposes stronger skill edits.)
+
+[harness]
+name = "goose"
+model = "openrouter/minimax/minimax-m2.7"
+data_dirs = ["data/treasury_bulletins"]
+timeout_seconds = 600
+max_retries = 2
+
+[evolution]
+mode = "skill_only"
+iterations = 4               # more shots for an improvement to surface
+frontier_size = 2
+concurrency = 2
+no_improvement_limit = 4
+failure_samples = 3          # learn from more failures per proposal
+
+[dataset]
+path = "data/officeqa_sample.csv"
+question_column = "question"
+ground_truth_column = "answer"
+category_column = "difficulty"
+train_ratio = 0.4
+val_ratio = 0.4              # 4 val questions → clearer, more granular climb than the default 2
+
+[scorer]
+type = "multi_tolerance"

@@ -5,7 +5,7 @@ A shot-by-shot guide for a **~6–8 minute** tutorial. Goal: a viewer goes from 
 **Pre-record checklist**
 - [ ] Terminal at a large, readable font (18pt+), clean prompt, dark theme.
 - [ ] `OPENROUTER_API_KEY` exported; arena-cli authenticated; VPN off / on a clean (non-datacenter) IP so the Arena CLI isn't Cloudflare-challenged.
-- [ ] Do ONE full dry run beforehand so the live `evoskill run` has warm output and a known runtime. Pre-stage a finished run to cut to (so viewers don't wait the full loop).
+- [ ] Use **`config.demo.toml`** for the on-camera run (tuned to show the climb). Do ONE full practice run beforehand to confirm it climbs and to learn the runtime; pre-stage that finished run to cut to (so viewers don't wait the full loop). If a run comes out flat, re-roll, or swap the model line to `openrouter/anthropic/claude-sonnet-4.6` for a stronger, more reliable climb.
 - [ ] Browser tabs ready: the repo, [arena.sentient.xyz](https://arena.sentient.xyz) leaderboard, [EvoSkill repo](https://github.com/sentient-agi/EvoSkill).
 
 ---
@@ -37,7 +37,7 @@ cd sentient-arena-evoskill-quickstart
 ## [2:30–4:30] Step 2 — Evolve (the star moment)
 **On screen:** terminal, then the live progress table.
 ```bash
-./scripts/improve.sh
+./scripts/improve.sh .evoskill/config.demo.toml   # tuned so the accuracy climb reads clearly
 ```
 **Say:**
 > "Now the magic. EvoSkill runs my seed skill on OfficeQA questions, sees where it fails, proposes fixes, tests them on a held-out split, and keeps what works — automatically. Watch the accuracy climb."

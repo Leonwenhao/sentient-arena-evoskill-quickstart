@@ -77,7 +77,7 @@ You'll see a live table climb:
 ```
 The evolved skill lands in `evoskill-project/.claude/skills/`. Inspect what changed with `evoskill diff`.
 
-> **Want stronger edits?** `./scripts/improve.sh .evoskill/config.advanced.toml` evolves with **Claude Sonnet** (a much stronger proposer) and relies on EvoSkill's **cross-model transferability** — the gain still carries to M2.7 at eval. Needs `ANTHROPIC_API_KEY`.
+> **Filming a demo?** `./scripts/improve.sh .evoskill/config.demo.toml` is tuned to show the accuracy *climb* clearly (wider validation split, more iterations). For an even more reliable climb, swap its model line to `openrouter/anthropic/claude-sonnet-4.6` — a stronger proposer whose gains still transfer to M2.7 at eval (EvoSkill's cross-model transferability). Still one OpenRouter key.
 
 ## Step 3 — Submit to Challenge 1
 
