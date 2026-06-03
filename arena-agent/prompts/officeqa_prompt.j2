@@ -1,0 +1,74 @@
+IRON RULES — violate these and you score ZERO:
+1. WRITE /app/answer.txt in EVERY Python block. A rough answer beats an empty file. Every code block MUST end with: open('/app/answer.txt','w').write(str(result))
+2. ALL math in Python, **standard library ONLY** (import statistics, math). NEVER import numpy / scipy / statsmodels / pandas — they are NOT installed in this container and the import will crash your run, dropping you into error-prone hand math. Python 3.12 stdlib already has statistics.geometric_mean, fmean, linear_regression, correlation, pstdev, stdev. Check the Named Formulas below before implementing any named formula.
+3. After writing your final answer, FINISH. Do not re-verify. Do not second-guess. Only reopen files if you found a concrete unit/date/cell error. Overwriting a correct answer with a "verification" is a top cause of wrong answers.
+
+WORKFLOW:
+1. Read question → identify: exact metric, time period, units, how many values needed, "reported IN" a specific bulletin?
+2. Use grep to find data: grep -l "metric" /app/corpus/treasury_bulletin_YYYY_*.txt → grep -n -i "metric" FILE → sed -n 'START,ENDp' FILE. File index at /app/corpus/index.txt.
+3. For multi-year questions: search the LATEST year FIRST for a retrospective summary table. One table beats 12 files. Example: "1969-1980" → grep 1981/1982 bulletins first.
+4. Extract values EXACTLY as printed (raw strings). Check units in table title/header/footnotes. Trace the full hierarchical column path.
+5. Compute in Python (stdlib). Write answer.txt in every code block.
+6. Write ONLY the bare number to answer.txt (see OUTPUT below).
+
+COMPUTE RULES:
+- Write and EXECUTE Python for ANY arithmetic or statistic — never compute in prose. You are far more reliable writing code than doing mental math.
+- If a result is NaN/inf, your formula or inputs are wrong — recompute; never write NaN.
+- Read every parameter (Box-Cox lambda, HP smoothing parameter, CVaR/percentile level, ddof) FROM THE QUESTION. Never hardcode them.
+
+NAMED FORMULAS (stdlib only — these are corrected; use exactly these):
+- Geometric mean of VALUES: statistics.geometric_mean(vals)   # feed positive LEVELS, not % returns
+- Mean / pop std / sample std: statistics.fmean(v) / statistics.pstdev(v) / statistics.stdev(v)
+- OLS regression: lr=statistics.linear_regression(x,y); slope,intercept=lr.slope,lr.intercept; pred=slope*xt+intercept
+- R^2: statistics.correlation(x,y)**2
+- Coefficient of variation: statistics.pstdev(v)/statistics.fmean(v)   # population unless question says "sample"
+- CV of year-over-year LOG growth: g=[math.log(v[i]/v[i-1]) for i in range(1,len(v))]; statistics.pstdev(g)/statistics.fmean(g)
+- CAGR / geometric annual rate: (end/start)**(1/n)-1 with n = end_year - start_year (PERIODS, not #points); *100 for percent
+- YoY percent: (new-old)/old*100.  Percentage-POINT change: new_pct - old_pct  (NOT percent change)
+- Continuously compounded growth: math.log(Vend/Vstart)/n_years
+- Symmetric growth: 2*(V2-V1)/(V2+V1)    ≠    Fisher growth: (V2-V1)/math.sqrt(V1*V2)   # DISTINCT — pick the one asked
+- CVaR / Expected Shortfall at the worst alpha tail: r=sorted(returns); k=max(1,math.ceil(len(r)*alpha)); es=sum(r[:k])/k   # alpha from question (0.05 for 95%); ceil avoids an empty-slice NaN
+- Theil index (T = GE(1)): mu=statistics.fmean(v); statistics.fmean([(x/mu)*math.log(x/mu) for x in v])   # requires x>0
+- Gini (any N): n=len(v); mu=statistics.fmean(v); mad=sum(abs(a-b) for a in v for b in v)/(n*n); gini=mad/(2*mu)
+- HHI: sum(s*s for s in shares_as_fractions)   # multiply by 10000 ONLY if the question asks for points; effective N = 1/HHI
+- Box-Cox with the GIVEN lambda: math.log(x) if lam==0 else (x**lam-1)/lam   # do NOT re-estimate lambda
+- Winsorized range: s=sorted(v); k=int(len(v)*frac); s=[s[k]]*k+s[k:len(v)-k]+[s[len(v)-k-1]]*k; rng=max(s)-min(s)
+- Linear system / HP filter / polynomial fit (no numpy): build the system and solve with plain Gaussian elimination. HP filter: A=I+lam*D'D (D=2nd-difference matrix), solve A·trend=series, cycle=series-trend; read lam FROM the question, never default 1600.
+- Arc elasticity: ((Q2-Q1)/((Q2+Q1)/2)) / ((P2-P1)/((P2+P1)/2))
+
+UNIT CONVERSION (the #1 extraction error):
+- Table "thousands" + question "nominal dollars" → MULTIPLY by 1,000. "millions" + "nominal dollars" → MULTIPLY by 1,000,000.
+- "millions" + "in millions" → no conversion. "thousands" + "in millions" → DIVIDE by 1,000. "millions" + "in billions" → DIVIDE by 1,000.
+- Parenthetical (234) = NEGATIVE. "n.a."/"---" = not available, NOT zero. Check FOUR places for the unit: table title, header row, column header, footnotes.
+
+FISCAL YEAR:
+- Before 1976: FY = Jul 1 – Jun 30. FY1975 = Jul 1974 – Jun 1975. Transition quarter Jul–Sep 1976.
+- After 1976: FY = Oct 1 – Sep 30. FY2024 = Oct 2023 – Sep 2024. "Calendar year" ≠ "fiscal year" — different months; for CY you may need to sum individual months.
+
+TABLE READING:
+- Hierarchical headers are flattened "Parent - Child - Grandchild". A value under "Marketable" means "Marketable Interest-bearing Public Debt", NOT total Public Debt. Trace the FULL column path before extracting.
+- Row indentation = subcategory; the parent row is the total of its children. Pre-1996 OCR confuses l↔1, O↔0, drops commas, shifts columns — cross-check implausible values.
+
+DOMAIN TRAPS:
+- "reported IN Feb 1938" → open treasury_bulletin_1938_02.txt ONLY; never substitute a retrospective table.
+- "Capital"/"Paid-in capital" = original appropriation. "Total capital"/"Fund balance"/"Net position" = capital + earnings; use TOTAL unless it says "paid-in".
+- "Net receipts" = total minus refunds. "Gross debt" includes intragovernmental; "Debt held by public" excludes it. "Outlays" ≠ "Expenditures" in scope.
+- If the question does NOT say "reported in", later bulletins may revise figures — prefer the later (revised) value; check 1–2 next bulletins.
+
+MULTI-FILE: search the latest year first for a retrospective table; batch grep across decades; track needed vs found in a dict and NEVER compute until you have every value (a missing value = wrong answer).
+
+OUTPUT (verified against the scorer — these lose points if wrong):
+- The final write to /app/answer.txt is PLAIN DECIMAL DIGITS only.
+- NEVER scientific notation (write 935851121560, never 9.3585e11 — e-notation scores 0).
+- Negatives as a leading minus (write -184.143, never accounting parens (184.143) — parens score 0).
+- MIRROR the requested unit scale: "in millions" → write the millions value (e.g. 36080), not the raw dollars.
+- Round exactly as asked: round(x,2) / round(x,3) / int(...). For a percent value write 12.34 (not 0.1234).
+- Multi-part answers: "[a, b]" → write ALL parts, each within 1%: '[' + ', '.join(str(p) for p in parts) + ']'. Missing one part scores 0.
+- Extra numbers in the file are tolerated for a single-number answer, but never let the wrong/missing number be the issue.
+
+EXTERNAL DATA you may need (not in the bulletins):
+CPI-U annual (1982-84=100): 1938:14.1, 1940:14.0, 1945:18.0, 1950:24.1, 1955:26.8, 1960:29.6, 1965:31.5, 1970:38.8, 1975:53.8, 1979:72.6, 1980:82.4, 1985:107.6, 1990:130.7, 1995:152.4, 2000:172.2, 2005:195.3, 2010:218.1, 2015:237.0, 2020:258.8. Real dollars: nominal*(CPI_target/CPI_source). WWII ended 1945; Korean War began Jun 1950; Vietnam 1955–1975.
+
+PRIMARY SOURCE is /app/corpus. Do not block on the network; if any fetch fails, proceed with corpus data and ALWAYS write an answer.
+
+{{ instruction }}

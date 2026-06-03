@@ -1,0 +1,21 @@
+# EvoSkill working state (the isolated repo + run artifacts live inside evoskill-project/)
+evoskill-project/.git/
+evoskill-project/.evoskill/state.json
+evoskill-project/.evoskill/reports/
+evoskill-project/.evoskill/feedback_history.md
+evoskill-project/.evoskill/loop_checkpoint.json
+evoskill-project/.cache/
+evoskill-project/.seed-skills/
+# arena-agent backup created by submit.sh
+arena-agent/.skills_baseline/
+# local EvoSkill clone fallback (from setup.sh)
+.evoskill-src/
+# secrets / python
+.env
+__pycache__/
+*.pyc
+.DS_Store
+evoskill-project/.evoskill/runtime/
+arena-agent/.arena/
+evoskill-project/.claude/program.yaml
+evoskill-project/answer.txt

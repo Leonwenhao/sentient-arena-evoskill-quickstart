@@ -1,0 +1,34 @@
+# EvoSkill config — OfficeQA / Sentient Arena Challenge 1 (default: M2.7 via goose).
+#
+# Evolves the seed skill in .claude/skills/officeqa-playbook/ using goose +
+# MiniMax M2.7 over OpenRouter — the SAME harness AND model the Arena runs at
+# eval, so the evolved skill is tuned to exactly what scores your submission.
+# Local execution: no Docker. Requires the goose CLI (one brew command).
+#
+# Paths are relative to the project root (the folder containing .evoskill/).
+
+[harness]
+name = "goose"                                  # the Arena's harness (CLI v1.25+). brew install block-goose-cli
+model = "openrouter/minimax/minimax-m2.7"       # the Arena's forced eval model. Needs OPENROUTER_API_KEY.
+data_dirs = ["data/treasury_bulletins"]         # the source docs the agent greps
+timeout_seconds = 600
+max_retries = 2
+
+[evolution]
+mode = "skill_only"          # evolve the skill files (keep the agent's base prompt fixed)
+iterations = 3               # enough to see improvement on the 10-question sample without a long wait
+frontier_size = 2
+concurrency = 2              # conservative for laptop rate limits; raise if yours are higher
+no_improvement_limit = 3
+failure_samples = 2
+
+[dataset]
+path = "data/officeqa_sample.csv"
+question_column = "question"
+ground_truth_column = "answer"
+category_column = "difficulty"   # stratify easy/hard across train/val
+train_ratio = 0.4                # higher ratios since the sample is only 10 questions
+val_ratio = 0.2
+
+[scorer]
+type = "multi_tolerance"     # exact / numeric-tolerance / list-overlap — matches the OfficeQA 1% scorer
