@@ -2,9 +2,11 @@ IRON RULES — violate these and you score ZERO:
 1. WRITE /app/answer.txt in EVERY Python block. A rough answer beats an empty file. Every code block MUST end with: open('/app/answer.txt','w').write(str(result))
 2. ALL math in Python, **standard library ONLY** (import statistics, math). NEVER import numpy / scipy / statsmodels / pandas — they are NOT installed in this container and the import will crash your run, dropping you into error-prone hand math. Python 3.12 stdlib already has statistics.geometric_mean, fmean, linear_regression, correlation, pstdev, stdev. Check the Named Formulas below before implementing any named formula.
 3. After writing your final answer, FINISH. Do not re-verify. Do not second-guess. Only reopen files if you found a concrete unit/date/cell error. Overwriting a correct answer with a "verification" is a top cause of wrong answers.
+4. CAP EVERY TOOL OUTPUT: end every grep with `| head -40`; keep sed windows ≤ 60 lines; NEVER cat a whole file or dump a full table. Oversized outputs crash the session before an answer is written — an instant zero.
+5. STEP BUDGET: ≤8 steps to find the table, ≤6 to extract. If the table isn't found by step 10, STOP grepping synonyms and read the bulletin's table-of-contents (first ~80 lines) or /app/corpus/index.txt, then jump to the listed table. By step 15 you MUST have written a best-effort number to /app/answer.txt — refine it after only on a concrete error.
 
 WORKFLOW:
-1. Read question → identify: exact metric, time period, units, how many values needed, "reported IN" a specific bulletin?
+1. Read question → write a checklist in your first code comment: exact metric, time period, units, rounding, how many values, "reported IN" a specific bulletin?, and EVERY exclusion/constraint ("excluding territories and regional aggregates" → drop rows like "Other countries"/"Total Europe"; "not weekly/52-week bills" → filter those rows; "use Table FFO-3's definition" → that table ONLY). Re-read the checklist once against your final answer.
 2. Use grep to find data: grep -l "metric" /app/corpus/treasury_bulletin_YYYY_*.txt → grep -n -i "metric" FILE → sed -n 'START,ENDp' FILE. File index at /app/corpus/index.txt.
 3. For multi-year questions: search the LATEST year FIRST for a retrospective summary table. One table beats 12 files. Example: "1969-1980" → grep 1981/1982 bulletins first.
 4. Extract values EXACTLY as printed (raw strings). Check units in table title/header/footnotes. Trace the full hierarchical column path.
@@ -27,6 +29,9 @@ NAMED FORMULAS (stdlib only — these are corrected; use exactly these):
 - YoY percent: (new-old)/old*100.  Percentage-POINT change: new_pct - old_pct  (NOT percent change)
 - Continuously compounded growth: math.log(Vend/Vstart)/n_years
 - Symmetric growth: 2*(V2-V1)/(V2+V1)    ≠    Fisher growth: (V2-V1)/math.sqrt(V1*V2)   # DISTINCT — pick the one asked
+- Pearson correlation: statistics.correlation(x,y).  Variance: pstdev(v)**2 (population) / stdev(v)**2 (sample). Z-score: (x-fmean(v))/pstdev(v).
+- Log growth: math.log(V2/V1); REALIZED variance = SUM of squared log returns (≠ pstdev(logreturns)**2 — read which one the question asks)
+- Macaulay duration: a zero-coupon bond's duration = its maturity in YEARS; portfolio of zeros = value-weighted average of maturities (always ≥ 0)
 - CVaR / Expected Shortfall at the worst alpha tail: r=sorted(returns); k=max(1,math.ceil(len(r)*alpha)); es=sum(r[:k])/k   # alpha from question (0.05 for 95%); ceil avoids an empty-slice NaN
 - Theil index (T = GE(1)): mu=statistics.fmean(v); statistics.fmean([(x/mu)*math.log(x/mu) for x in v])   # requires x>0
 - Gini (any N): n=len(v); mu=statistics.fmean(v); mad=sum(abs(a-b) for a in v for b in v)/(n*n); gini=mad/(2*mu)
@@ -45,8 +50,28 @@ FISCAL YEAR:
 - Before 1976: FY = Jul 1 – Jun 30. FY1975 = Jul 1974 – Jun 1975. Transition quarter Jul–Sep 1976.
 - After 1976: FY = Oct 1 – Sep 30. FY2024 = Oct 2023 – Sep 2024. "Calendar year" ≠ "fiscal year" — different months; for CY you may need to sum individual months.
 
+PUBLICATION LAG (top silent killer — right table, WRONG issue):
+- A bulletin YYYY_MM only has data through ~month MM-2 (the 1982_03 issue's monthly tables end at Jan 1982). December data for year X is NEVER in an X bulletin — it first appears in X+1 issues (X+1_02/X+1_03).
+- Full calendar-year X series → open bulletin X+1_02 or X+1_03 FIRST: its 13-month window covers Jan X…Jan X+1 — all 12 CY-X months in ONE table. NEVER assemble CY X solely from X-dated issues.
+- Year-end (Dec 31, X) stock figures: look in X+1 issues too.
+
+MONTH-COLUMN YEAR MAPPING (top silent killer #2):
+- Monthly tables show a ROLLING 13-MONTH window ending ~2 months before the issue date, spanning TWO calendar years. Dec 1981 issue: `| Oct. | Nov. | Dec. | Jan. | … | Sept. | Oct..1 |` = Oct 1980 → Oct 1981. A month suffixed `..1` is the same month ONE YEAR LATER; the year boundary is the Dec.→Jan. column transition.
+- Assign an explicit year to EVERY month column (≤ Dec. → earlier year; after Dec. → later year) — never assume Jan…Dec = the bulletin's year.
+- "Cumulative to date" is FISCAL-year-to-date — never a month; pre-1977 CY data may need two tables (Jan–Jun + Jul–Dec, FY ran Jul–Jun).
+- After extracting, print one `YYYY-Mon: value` line per value and confirm the months are EXACTLY the requested ones. Never hand-type a long list without this printed mapping.
+
+EXTRACTION CROSS-CHECK (one shot, mandatory — this is NOT "re-verification"):
+- If the table has a Total / Calendar yr. / Fiscal yr. / Cumulative row or column, compare your extracted sum against it; mismatch > 2% = misaligned columns → re-map before computing.
+- ROW-INTERNAL OCR CHECK: the corpus is OCR'd — single cells carry transposed digits (1417655 printed as 1471655). When a row shows components AND their total, assert sum(components) == total for every row you use; if one cell breaks the identity, recover it as total − other components. When two issues disagree on one cell of the same series, the printed total is the arbiter.
+- Cross-check the values that dominate your result (endpoints, extremes) against a second issue reprinting the same series.
+- A value ~10× off its neighbors is OCR/column-shift — re-extract that cell. An absurd result (elasticity −289, negative duration, CV > 5) means a bad INPUT — fix extraction, not the formula.
+
 TABLE READING:
 - Hierarchical headers are flattened "Parent - Child - Grandchild". A value under "Marketable" means "Marketable Interest-bearing Public Debt", NOT total Public Debt. Trace the FULL column path before extracting.
+- SPLIT-ENTITY SUBCOLUMNS: when the question asks about an entity AS A WHOLE (e.g. "Defense Department") but the table splits it into subcolumns ("Defense Department > Military functions" + "> Civil functions"), the entity's value = SUM of its NAMED subcolumns ONLY — one subcolumn is NOT the department, and a column headed "Unnamed" ("Defense Department > Unnamed: 3_level_1") is a parser misattribution belonging to a NEIGHBORING entity: never include it. Verified: FY1955 Defense = 35532 + 548 = 36080 (1958_10 issue); 35532 alone or +1993 (Unnamed) both score zero.
+- MANDATORY MAPPING IDENTITY: after mapping a row's columns to entities, assert sum(all entities) == printed row Total. If it fails by >1%, the mapping IS WRONG — re-map or recover the entity as Total − sum(other named entities). NEVER proceed blaming "rounding/footnotes".
+- Revised retrospective tables: use the LATEST issue covering the year (FY1955 → a 1958 issue; prefer 1958_10 over 1958_02 — later = revised).
 - Row indentation = subcategory; the parent row is the total of its children. Pre-1996 OCR confuses l↔1, O↔0, drops commas, shifts columns — cross-check implausible values.
 
 DOMAIN TRAPS:
@@ -54,6 +79,9 @@ DOMAIN TRAPS:
 - "Capital"/"Paid-in capital" = original appropriation. "Total capital"/"Fund balance"/"Net position" = capital + earnings; use TOTAL unless it says "paid-in".
 - "Net receipts" = total minus refunds. "Gross debt" includes intragovernmental; "Debt held by public" excludes it. "Outlays" ≠ "Expenditures" in scope.
 - If the question does NOT say "reported in", later bulletins may revise figures — prefer the later (revised) value; check 1–2 next bulletins.
+- OUTLAYS-BY-FUNCTION ROWS (gross vs net): each function block has rows Outlays (gross), Proprietary receipts (neg), Intrabudgetary, Total (net). "NET <function> outlays" → the Total row; "<function> outlays EXCLUDING offsets and adjustments" → the gross Outlays row. (FY1981 net interest ≈ 82.6B Total-row, NOT 88.0B gross — both errors verified zero-scorers.)
+- PERCENT DENOMINATOR: "what percent of THESE were…" = percent of the quantity the question just defined (bids SUBMITTED / tenders RECEIVED), NOT a related one (tenders ACCEPTED). Take numerator and denominator from the SAME passage.
+- AUCTIONS: the bulletin narrative states per security: tenders RECEIVED ("totaled $X million"), ACCEPTED ("of which $Y million"), and foreign/Government-account add-ons. Summary tables (PDO-4 "Amount tendered") INCLUDE non-auction add-ons to Govt accounts/FRBs (see footnote) so they exceed the narrative. "Bids submitted by investors" = narrative tenders-received. If narrative and table disagree, reconcile the delta against the stated add-ons and use the figure whose definition matches the question. Match notes by MATURITY date ("maturing end of July 1984" → 2-yr note dated ~Aug 1982 → 1982_08 issue).
 
 MULTI-FILE: search the latest year first for a retrospective table; batch grep across decades; track needed vs found in a dict and NEVER compute until you have every value (a missing value = wrong answer).
 

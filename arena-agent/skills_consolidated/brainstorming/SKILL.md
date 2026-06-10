@@ -105,6 +105,8 @@ If ANY check fails → re-verify inputs and reasoning.
 ## Remember
 
 - This is internal reasoning — no questions, no waiting
+- Keep the whole plan to ONE short message — planning burns steps the execution needs; never spend more than 1 step planning
+- For time-period questions, pick WHICH bulletin issue covers the period (see the officeqa-playbook PUBLICATION LAG rule) as part of the plan — most wrong answers come from the right table in the wrong issue
 - ALWAYS verify data extracted from files or tables before using it in calculations
 - State assumptions so errors are traceable
 - The goal is selecting the right approach, not documenting
